@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>My Shortcut</title>
+  <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/nerdamer.core.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Algebra.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Calculus.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Solve.js"></script>
+  
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,7 +25,7 @@
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 15px;
       max-width: 800px;
-      margin: 0 auto 40px auto; /* 計算機との間に余白を追加 */
+      margin: 0 auto 40px auto;
     }
 
     .card {
@@ -38,9 +43,9 @@
       transform: scale(1.05);
     }
 
-    /* --- ここから計算機のスタイル --- */
+    /* --- 計算機のスタイル --- */
     .calc-container {
-      max-width: 320px;
+      max-width: 340px;
       margin: 0 auto;
       background: #2d3142;
       padding: 20px;
@@ -69,38 +74,40 @@
     }
 
     .calc-btn {
-      background: #ef8354;
-      color: white;
+      background: #bfc0c0; /* 記号・演算子ボタンのデフォルト色 */
+      color: #2d3142;
       border: none;
       padding: 15px 0;
       font-size: 1.4rem;
       border-radius: 10px;
       cursor: pointer;
-      user-select: none; /* 長押しによるテキスト選択を防止 */
-      -webkit-tap-highlight-color: transparent; /* タップ時の青い選択色を無効化 */
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
       transition: background 0.1s, transform 0.05s;
     }
 
-    /* タッチ・クリック時のフィードバック */
     .calc-btn:active {
       transform: scale(0.95);
       filter: brightness(0.9);
     }
 
-    /* 数字・記号ボタンの色分け */
+    /* 数字ボタン */
     .calc-btn.num {
       background: #ffffff;
       color: #2d3142;
     }
 
-    .calc-btn.op {
-      background: #bfc0c0;
-      color: #2d3142;
-    }
-
+    /* クリアボタン */
     .calc-btn.clear {
       background: #d90429;
       color: white;
+    }
+
+    /* 計算実行ボタン */
+    .calc-btn.exec {
+      background: #ef8354;
+      color: white;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -123,29 +130,34 @@
     <input type="text" id="display" class="calc-display" readonly placeholder="0">
     <div class="calc-buttons">
       <button class="calc-btn clear" onclick="clearDisplay()">C</button>
-      <button class="calc-btn op" onclick="appendValue('(')">(</button>
-      <button class="calc-btn op" onclick="appendValue(')')">)</button>
-      <button class="calc-btn op" onclick="appendValue('^')">^</button>
+      <button class="calc-btn" onclick="backspace()">←</button>
+      <button class="calc-btn" onclick="appendValue('(')">(</button>
+      <button class="calc-btn" onclick="appendValue(')')">)</button>
+
+      <button class="calc-btn" onclick="appendValue('x')">x</button>
+      <button class="calc-btn" onclick="appendValue('=')">=</button>
+      <button class="calc-btn" onclick="appendValue('^')">^</button>
+      <button class="calc-btn" onclick="appendValue('÷')">÷</button>
 
       <button class="calc-btn num" onclick="appendValue('7')">7</button>
       <button class="calc-btn num" onclick="appendValue('8')">8</button>
       <button class="calc-btn num" onclick="appendValue('9')">9</button>
-      <button class="calc-btn op" onclick="appendValue('/')">÷</button>
+      <button class="calc-btn" onclick="appendValue('×')">×</button>
 
       <button class="calc-btn num" onclick="appendValue('4')">4</button>
       <button class="calc-btn num" onclick="appendValue('5')">5</button>
       <button class="calc-btn num" onclick="appendValue('6')">6</button>
-      <button class="calc-btn op" onclick="appendValue('*')">×</button>
+      <button class="calc-btn" onclick="appendValue('-')">-</button>
 
       <button class="calc-btn num" onclick="appendValue('1')">1</button>
       <button class="calc-btn num" onclick="appendValue('2')">2</button>
       <button class="calc-btn num" onclick="appendValue('3')">3</button>
-      <button class="calc-btn op" onclick="appendValue('-')">-</button>
+      <button class="calc-btn" onclick="appendValue('+')">+</button>
 
       <button class="calc-btn num" onclick="appendValue('0')">0</button>
+      <button class="calc-btn num" onclick="appendValue('00')">00</button>
       <button class="calc-btn num" onclick="appendValue('.')">.</button>
-      <button class="calc-btn" onclick="calculate()">=</button>
-      <button class="calc-btn op" onclick="appendValue('+')">+</button>
+      <button class="calc-btn exec" onclick="calculate()">計算</button>
     </div>
   </div>
 
@@ -154,7 +166,8 @@
 
     // 画面に文字を追加
     function appendValue(value) {
-      if (display.value === 'Error') {
+      // エラー表示や、前回の計算結果が残っている場合はクリアして新しく入力
+      if (display.value === 'Error' || display.value.startsWith('x = ') || display.value === '解なし' || display.value.includes('Error')) {
         display.value = '';
       }
       display.value += value;
@@ -165,23 +178,73 @@
       display.value = '';
     }
 
-    // 計算の実行
+    // 1文字削除（バックスペース）
+    function backspace() {
+      if (display.value === 'Error' || display.value.startsWith('x = ') || display.value === '解なし') {
+        display.value = '';
+      } else {
+        display.value = display.value.slice(0, -1);
+      }
+    }
+
+    // 計算・方程式の実行
     function calculate() {
+      // ライブラリのロード確認（オフライン対策）
+      if (typeof nerdamer === 'undefined') {
+        display.value = 'Network Error';
+        return;
+      }
+
       try {
         let expression = display.value;
-
         if (expression.trim() === '') return;
 
-        // 累乗記号「^」を JavaScriptで計算可能な「**」に置換
-        expression = expression.replace(/\^/g, '**');
+        // 表示用の「×」「÷」を内部計算用の「*」「/」に変換
+        let calcExpression = expression.replace(/×/g, '*').replace(/÷/g, '/');
 
-        // 数式を安全に評価して計算
-        const result = new Function('return ' + expression)();
+        // 省略された掛け算（*）を自動補完する正規表現
+        calcExpression = calcExpression
+          .replace(/(\d)\(/g, '$1*(')      // 2( -> 2*(
+          .replace(/\)(\d)/g, ')*$1')      // )2 -> )*2
+          .replace(/\)\(/g, ')*(')         // )( -> )*(
+          .replace(/(\d)x/g, '$1*x')       // 2x -> 2*x
+          .replace(/x\(/g, 'x*(')          // x( -> x*(
+          .replace(/\)x/g, ')*x')          // )x -> )*x
+          .replace(/x(\d)/g, 'x*$1')       // x2 -> x*2
+          .replace(/xx/g, 'x*x');          // xx -> x*x
 
-        if (result === undefined || isNaN(result) || !isFinite(result)) {
-          display.value = 'Error';
+        // 方程式（= が含まれている場合）の処理
+        if (calcExpression.includes('=')) {
+          let solutions = nerdamer.solveEquations(calcExpression, 'x');
+          
+          if (Array.isArray(solutions)) {
+            if (solutions.length === 0) {
+              display.value = "解なし";
+            } else {
+              // 各解を小数（十進数）に変換して整形
+              let decimalSolutions = solutions.map(s => {
+                let dec = nerdamer("toDecimal(" + s.toString() + ")").toString();
+                let num = Number(dec);
+                return isNaN(num) ? dec : num; // 虚数解(i)などの場合はそのまま返す
+              });
+              // 重複する解を削除して表示
+              decimalSolutions = [...new Set(decimalSolutions)];
+              display.value = "x = " + decimalSolutions.join(", ");
+            }
+          } else {
+            let dec = nerdamer("toDecimal(" + solutions.toString() + ")").toString();
+            let num = Number(dec);
+            display.value = "x = " + (isNaN(num) ? dec : num);
+          }
         } else {
-          display.value = result;
+          // 通常の計算（= が含まれていない場合）
+          if (calcExpression.includes('x')) {
+            display.value = 'Error (=が必要)';
+            return;
+          }
+          let result = nerdamer("toDecimal(" + calcExpression + ")").toString();
+          let num = Number(result);
+          display.value = isNaN(num) ? result : num;
         }
       } catch (error) {
         display.value = 'Error';
