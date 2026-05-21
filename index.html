@@ -20,7 +20,7 @@
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 15px;
       max-width: 800px;
-      margin: 0 auto;
+      margin: 0 auto 40px auto; /* 計算機との間に余白を追加 */
     }
 
     .card {
@@ -36,6 +36,71 @@
 
     .card:hover {
       transform: scale(1.05);
+    }
+
+    /* --- ここから計算機のスタイル --- */
+    .calc-container {
+      max-width: 320px;
+      margin: 0 auto;
+      background: #2d3142;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .calc-display {
+      width: 100%;
+      height: 60px;
+      background: #4f5d75;
+      color: #ffffff;
+      text-align: right;
+      font-size: 1.8rem;
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      box-sizing: border-box;
+      margin-bottom: 15px;
+    }
+
+    .calc-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .calc-btn {
+      background: #ef8354;
+      color: white;
+      border: none;
+      padding: 15px 0;
+      font-size: 1.4rem;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none; /* 長押しによるテキスト選択を防止 */
+      -webkit-tap-highlight-color: transparent; /* タップ時の青い選択色を無効化 */
+      transition: background 0.1s, transform 0.05s;
+    }
+
+    /* タッチ・クリック時のフィードバック */
+    .calc-btn:active {
+      transform: scale(0.95);
+      filter: brightness(0.9);
+    }
+
+    /* 数字・記号ボタンの色分け */
+    .calc-btn.num {
+      background: #ffffff;
+      color: #2d3142;
+    }
+
+    .calc-btn.op {
+      background: #bfc0c0;
+      color: #2d3142;
+    }
+
+    .calc-btn.clear {
+      background: #d90429;
+      color: white;
     }
   </style>
 </head>
@@ -54,5 +119,74 @@
     <a class="card" href="https://mail.google.com/mail/u/0/#chat/space/AAQAfQ8XCgw" target="_blank">Memo</a>
   </div>
 
+  <div class="calc-container">
+    <input type="text" id="display" class="calc-display" readonly placeholder="0">
+    <div class="calc-buttons">
+      <button class="calc-btn clear" onclick="clearDisplay()">C</button>
+      <button class="calc-btn op" onclick="appendValue('(')">(</button>
+      <button class="calc-btn op" onclick="appendValue(')')">)</button>
+      <button class="calc-btn op" onclick="appendValue('^')">^</button>
+
+      <button class="calc-btn num" onclick="appendValue('7')">7</button>
+      <button class="calc-btn num" onclick="appendValue('8')">8</button>
+      <button class="calc-btn num" onclick="appendValue('9')">9</button>
+      <button class="calc-btn op" onclick="appendValue('/')">÷</button>
+
+      <button class="calc-btn num" onclick="appendValue('4')">4</button>
+      <button class="calc-btn num" onclick="appendValue('5')">5</button>
+      <button class="calc-btn num" onclick="appendValue('6')">6</button>
+      <button class="calc-btn op" onclick="appendValue('*')">×</button>
+
+      <button class="calc-btn num" onclick="appendValue('1')">1</button>
+      <button class="calc-btn num" onclick="appendValue('2')">2</button>
+      <button class="calc-btn num" onclick="appendValue('3')">3</button>
+      <button class="calc-btn op" onclick="appendValue('-')">-</button>
+
+      <button class="calc-btn num" onclick="appendValue('0')">0</button>
+      <button class="calc-btn num" onclick="appendValue('.')">.</button>
+      <button class="calc-btn" onclick="calculate()">=</button>
+      <button class="calc-btn op" onclick="appendValue('+')">+</button>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById('display');
+
+    // 画面に文字を追加
+    function appendValue(value) {
+      if (display.value === 'Error') {
+        display.value = '';
+      }
+      display.value += value;
+    }
+
+    // 画面をクリア
+    function clearDisplay() {
+      display.value = '';
+    }
+
+    // 計算の実行
+    function calculate() {
+      try {
+        let expression = display.value;
+
+        if (expression.trim() === '') return;
+
+        // 累乗記号「^」を JavaScriptで計算可能な「**」に置換
+        expression = expression.replace(/\^/g, '**');
+
+        // 数式を安全に評価して計算
+        const result = new Function('return ' + expression)();
+
+        if (result === undefined || isNaN(result) || !isFinite(result)) {
+          display.value = 'Error';
+        } else {
+          display.value = result;
+        }
+      } catch (error) {
+        display.value = 'Error';
+      }
+    }
+  </script>
 </body>
 </html>
