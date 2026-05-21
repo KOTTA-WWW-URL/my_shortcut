@@ -74,7 +74,7 @@
     }
 
     .calc-btn {
-      background: #bfc0c0; /* 記号・演算子ボタンのデフォルト色 */
+      background: #bfc0c0;
       color: #2d3142;
       border: none;
       padding: 15px 0;
@@ -166,7 +166,6 @@
 
     // 画面に文字を追加
     function appendValue(value) {
-      // エラー表示や、前回の計算結果が残っている場合はクリアして新しく入力
       if (display.value === 'Error' || display.value.startsWith('x = ') || display.value === '解なし' || display.value.includes('Error')) {
         display.value = '';
       }
@@ -178,7 +177,7 @@
       display.value = '';
     }
 
-    // 1文字削除（バックスペース）
+    // 1文字削除
     function backspace() {
       if (display.value === 'Error' || display.value.startsWith('x = ') || display.value === '解なし') {
         display.value = '';
@@ -189,7 +188,6 @@
 
     // 計算・方程式の実行
     function calculate() {
-      // ライブラリのロード確認（オフライン対策）
       if (typeof nerdamer === 'undefined') {
         display.value = 'Network Error';
         return;
@@ -199,19 +197,19 @@
         let expression = display.value;
         if (expression.trim() === '') return;
 
-        // 表示用の「×」「÷」を内部計算用の「*」「/」に変換
+        // 記号の変換
         let calcExpression = expression.replace(/×/g, '*').replace(/÷/g, '/');
 
-        // 省略された掛け算（*）を自動補完する正規表現
+        // 省略された掛け算（*）を自動補完
         calcExpression = calcExpression
-          .replace(/(\d)\(/g, '$1*(')      // 2( -> 2*(
-          .replace(/\)(\d)/g, ')*$1')      // )2 -> )*2
-          .replace(/\)\(/g, ')*(')         // )( -> )*(
-          .replace(/(\d)x/g, '$1*x')       // 2x -> 2*x
-          .replace(/x\(/g, 'x*(')          // x( -> x*(
-          .replace(/\)x/g, ')*x')          // )x -> )*x
-          .replace(/x(\d)/g, 'x*$1')       // x2 -> x*2
-          .replace(/xx/g, 'x*x');          // xx -> x*x
+          .replace(/(\d)\(/g, '$1*(')
+          .replace(/\)(\d)/g, ')*$1')
+          .replace(/\)\(/g, ')*(')
+          .replace(/(\d)x/g, '$1*x')
+          .replace(/x\(/g, 'x*(')
+          .replace(/\)x/g, ')*x')
+          .replace(/x(\d)/g, 'x*$1')
+          .replace(/xx/g, 'x*x');
 
         // 方程式（= が含まれている場合）の処理
         if (calcExpression.includes('=')) {
@@ -221,30 +219,29 @@
             if (solutions.length === 0) {
               display.value = "解なし";
             } else {
-              // 各解を小数（十進数）に変換して整形
               let decimalSolutions = solutions.map(s => {
-                let dec = nerdamer("toDecimal(" + s.toString() + ")").toString();
+                // ライブラリの内部関数で安全に小数（decimal）テキストに変換
+                let dec = nerdamer(s).text('decimal');
                 let num = Number(dec);
-                return isNaN(num) ? dec : num; // 虚数解(i)などの場合はそのまま返す
+                return isNaN(num) ? dec : num;
               });
-              // 重複する解を削除して表示
               decimalSolutions = [...new Set(decimalSolutions)];
               display.value = "x = " + decimalSolutions.join(", ");
             }
           } else {
-            let dec = nerdamer("toDecimal(" + solutions.toString() + ")").toString();
+            let dec = nerdamer(solutions).text('decimal');
             let num = Number(dec);
             display.value = "x = " + (isNaN(num) ? dec : num);
           }
         } else {
-          // 通常の計算（= が含まれていない場合）
+          // 通常の計算
           if (calcExpression.includes('x')) {
             display.value = 'Error (=が必要)';
             return;
           }
-          let result = nerdamer("toDecimal(" + calcExpression + ")").toString();
-          let num = Number(result);
-          display.value = isNaN(num) ? result : num;
+          let dec = nerdamer(calcExpression).text('decimal');
+          let num = Number(dec);
+          display.value = isNaN(num) ? dec : num;
         }
       } catch (error) {
         display.value = 'Error';
